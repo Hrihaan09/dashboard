@@ -1,32 +1,41 @@
 import streamlit as st
 import pandas as pd
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
 
-# Load data
-df = pd.read_csv("data.csv", parse_dates=['Date'])
+# Set up Google Sheets API credentials
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+client = gspread.authorize(creds)
 
+# Load data from Google Sheet
+sheet = client.open("Dashboard Sample Data").sheet1  # <-- change this to the name of your Google Sheet
+data = sheet.get_all_records()
+df = pd.DataFrame(data)
+
+# Streamlit Dashboard
 st.title("📚 Tutoring Performance Dashboard")
-st.markdown("This dashboard shows student performance and attendance over time.")
+st.markdown("Visualize student performance and attendance from your spreadsheet.")
 
-# Filter by student
-student_list = df['Student'].unique()
-selected_student = st.selectbox("Select a student", student_list)
+# Student filter
+students = df['Student'].unique()
+selected_student = st.selectbox("Select a student", students)
+student_df = df[df['Student'] == selected_student]
 
-student_data = df[df['Student'] == selected_student]
-
-# Score Trend
+# Score trend
 st.subheader("📈 Score Over Time")
-fig = px.line(student_data, x='Date', y='Score', color='Subject', markers=True)
-st.plotly_chart(fig)
+fig1 = px.line(student_df, x='Date', y='Score', color='Subject', markers=True)
+st.plotly_chart(fig1)
 
-# Attendance Overview
-st.subheader("✅ Attendance Record")
-attendance_count = student_data.groupby('Subject')['Attended'].sum().reset_index()
-fig2 = px.bar(attendance_count, x='Subject', y='Attended', color='Subject')
+# Attendance bar chart
+st.subheader("✅ Attendance by Subject")
+attendance_summary = student_df.groupby('Subject')['Attended'].sum().reset_index()
+fig2 = px.bar(attendance_summary, x='Subject', y='Attended', color='Subject')
 st.plotly_chart(fig2)
 
-# Average Score by Subject
+# Average scores
 st.subheader("📊 Average Score by Subject")
-avg_scores = student_data.groupby('Subject')['Score'].mean().reset_index()
+avg_scores = student_df.groupby('Subject')['Score'].mean().reset_index()
 fig3 = px.bar(avg_scores, x='Subject', y='Score', color='Subject')
 st.plotly_chart(fig3)

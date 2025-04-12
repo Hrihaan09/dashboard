@@ -2,45 +2,45 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.title("📚 Tutoring Performance Dashboard")
-st.markdown("Upload your CSV file below to generate your custom dashboard.")
+st.title("📊 Smart Business Dashboard")
+st.markdown("Upload a CSV with your business data — we'll analyze it for you automatically.")
 
-# File upload
-uploaded_file = st.file_uploader("📁 Upload your data file (.csv)", type=["csv"])
+uploaded_file = st.file_uploader("📁 Upload your .csv file", type=["csv"])
 
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-
+if uploaded_file:
     try:
-        # Show raw data
-        st.subheader("🧾 Uploaded Data Preview")
+        df = pd.read_csv(uploaded_file)
+        st.subheader("🧾 Data Preview")
         st.write(df.head())
 
-        # Filter by student
-        students = df['Student'].unique()
-        selected_student = st.selectbox("Select a student", students)
-        student_df = df[df['Student'] == selected_student]
+        # Show column types
+        st.subheader("🔍 Column Type Detection")
+        st.write(df.dtypes)
 
-        # Score trend
-        st.subheader("📈 Score Over Time")
-        fig1 = px.line(student_df, x='Date', y='Score', color='Subject', markers=True)
-        st.plotly_chart(fig1)
+        # Dropdowns for user to select important columns
+        date_col = st.selectbox("Select a date column (optional)", options=["None"] + list(df.columns))
+        category_col = st.selectbox("Select a category column (optional)", options=["None"] + list(df.columns))
+        numeric_col = st.selectbox("Select a numeric column to analyze", options=df.select_dtypes(include='number').columns)
 
-        # Attendance bar chart
-        st.subheader("✅ Attendance by Subject")
-        attendance_summary = student_df.groupby('Subject')['Attended'].sum().reset_index()
-        fig2 = px.bar(attendance_summary, x='Subject', y='Attended', color='Subject')
-        st.plotly_chart(fig2)
+        # Chart: Numeric over time
+        if date_col != "None":
+            st.subheader(f"📈 {numeric_col} Over Time")
+            df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+            fig1 = px.line(df, x=date_col, y=numeric_col)
+            st.plotly_chart(fig1)
 
-        # Average scores
-        st.subheader("📊 Average Score by Subject")
-        avg_scores = student_df.groupby('Subject')['Score'].mean().reset_index()
-        fig3 = px.bar(avg_scores, x='Subject', y='Score', color='Subject')
-        st.plotly_chart(fig3)
+        # Chart: Category breakdown
+        if category_col != "None":
+            st.subheader(f"📊 {numeric_col} by {category_col}")
+            grouped = df.groupby(category_col)[numeric_col].mean().reset_index()
+            fig2 = px.bar(grouped, x=category_col, y=numeric_col, color=category_col)
+            st.plotly_chart(fig2)
+
+        # Summary stats
+        st.subheader(f"📌 Summary of {numeric_col}")
+        st.write(df[numeric_col].describe())
 
     except Exception as e:
-        st.error(f"⚠️ Error processing file: {e}")
-        st.info("Make sure your file has the following columns: Student, Subject, Date, Score, Attended")
-
+        st.error(f"❌ Something went wrong: {e}")
 else:
-    st.info("⬆️ Please upload a CSV file to get started.")
+    st.info("⬆️ Upload a CSV to get started")
